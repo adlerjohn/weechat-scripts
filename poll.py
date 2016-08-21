@@ -16,16 +16,16 @@
 
 SCRIPT_NAME = 'poll'
 SCRIPT_AUTHOR = 'John Adler'
-SCRIPT_VERSION = '0.1.0'
+SCRIPT_VERSION = '0.1.1'
 SCRIPT_LICENSE = 'GPL3'
 SCRIPT_DESC = 'Polls messages and automatically downloads new files that match criteria.'
 SCRIPT_SHUTDOWN = ''
 SCRIPT_CHARSET = 'UTF-8'
 
-FILES = [
-	]
-HOSTS = [
-	]
+SCRIPT_OPTIONS = {
+	'files' : '',
+	'hosts' : ''
+	}
 
 #---------------
 # Imports
@@ -51,7 +51,11 @@ def words_in_string(words, s):
 #---------------
 # Handlers
 #---------------
-def handle_message(
+def config_cb(data, option, value):
+	weechat.config_set_plugin(option, value)
+	return weechat.WEECHAT_RC_OK
+
+def message_cb(
 	data,
 	buf,
 	date,
@@ -61,6 +65,9 @@ def handle_message(
 	prefix,
 	message
 ):
+	files = weechat.config_get_plugin('files').split(',')
+	hosts = weechat.config_get_plugin('hosts').split(',')
+
 	tags = list(tags.split(','))
 
 	# Ignore join/leave message
@@ -80,12 +87,12 @@ def handle_message(
 	host = host[1]
 
 	# Check if the current host matches our list of hosts
-	if host not in HOSTS:
+	if host not in hosts:
 		return weechat.WEECHAT_RC_OK
 
 	# Compare the message against list of files
 	do_download = False
-	for f in FILES:
+	for f in files:
 		if words_in_string(f, message):
 			do_download = True
 			break
@@ -99,7 +106,7 @@ def handle_message(
 	msg = match.group(1)
 
 	# Download file
-	weechat.command("", msg)
+	weechat.command(weechat.current_buffer(), msg)
 
 	return weechat.WEECHAT_RC_OK
 
@@ -107,7 +114,16 @@ def handle_message(
 # Main
 #---------------
 def main():
-	weechat.hook_print('', '', '', 1, 'handle_message', '')
+	# Read options
+	for option, default_value in SCRIPT_OPTIONS.items():
+		if not weechat.config_is_set_plugin(option):
+			weechat.config_set_plugin(option, default_value)
+
+	# Callback to update options
+	weechat.hook_config('plugins.var.python.' + SCRIPT_NAME + '.*', 'config_cb', '')
+
+	# Callback to process messages
+	weechat.hook_print('', '', '', 1, 'message_cb', '')
 
 if __name__ == '__main__' and IMPORT_OK and weechat.register(
 	SCRIPT_NAME,
