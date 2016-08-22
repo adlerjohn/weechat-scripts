@@ -47,7 +47,16 @@ except ImportError as error:
 # Utility
 #---------------
 def words_in_string(words, s):
-	return set(words.split()).intersection(s.split())
+	return set(words.split()).intersection(s.split()
+
+def parse_tags(tags, tag):
+	pattern = re.compile(r'^' + tag + '_(.*)$', re.IGNORECASE)
+	for t in tags:
+		match = pattern.match(t)
+		if not match:
+			continue
+		return match.group(1)
+	return None
 
 #---------------
 # Handlers
@@ -79,29 +88,15 @@ def message_cb(
 	weechat.prnt(weechat.current_buffer(), "tags = " + str(tags))
 	weechat.prnt(weechat.current_buffer(), "mess = " + str(message))
 
-	# Check if the 'host_' substring is in the tags
-	host_str = [s for s in tags if 'host_' in s]
-	if len(host_str) != 1:
-		return weechat.WEECHAT_RC_OK
-	host_str = host_str[0]
-
 	# Extract the host
-	host = host_str.split("_", 1)
-	if len(host) != 2:
+	host = parse_tags(tags, 'host')
+	if not host:
 		return weechat.WEECHAT_RC_OK
-	host = host[1]
-
-	# Check if the 'nick_' substring is in the tags
-	nick_str = [s for s in tags if 'nick_' in s]
-	if len(nick_str) != 1:
-		return weechat.WEECHAT_RC_OK
-	nick_str = nick_str[0]
 
 	# Extract the nick
-	nick = nick_str.split("_", 1)
-	if len(nick) != 2:
+	nick = parse_tags(tags, 'nick')
+	if not nick:
 		return weechat.WEECHAT_RC_OK
-	nick = nick[1]
 
 	# Check if the current host or nick matches our list of accpeted hosts or nicks
 	if host not in hosts and nick not in nicks:
