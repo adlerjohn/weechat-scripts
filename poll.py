@@ -85,9 +85,6 @@ def message_cb(
 	if 'irc_smart' in tags or 'irc_smart_filter' in tags:
 		return weechat.WEECHAT_RC_OK
 
-	weechat.prnt(weechat.current_buffer(), "tags = " + str(tags))
-	weechat.prnt(weechat.current_buffer(), "mess = " + str(message))
-
 	# Extract the host
 	host = parse_tags(tags, 'host')
 	if not host:
