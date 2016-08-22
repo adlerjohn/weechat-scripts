@@ -1,4 +1,5 @@
 #!/bin/bash
+#! /bin/sh
 ### BEGIN INIT INFO
 # Provides:          weechatd
 # Required-Start:    $network
@@ -6,121 +7,184 @@
 # Default-Start:     2 3 4 5
 # Default-Stop:      0 1 6
 # Short-Description: Start weechat daemon at boot time
-# Description:       This init script will start a weechat session using the settings provided in /etc/weechat.conf
+# Description:       This init script will start a weechat session using the settings provided in /etc/weechatd.conf
 ### END INIT INFO
 
-# Include the LSB library functions
+# Author: John Adler
+
+# Do NOT "set -e"
+
+# PATH should only include /usr/* if it runs after the mountnfs.sh script
+#PATH=/sbin:/usr/sbin:/bin:/usr/bin
+DESC="Description of the service"
+NAME=weechat
+DAEMON=/usr/bin/${NAME}
+DAEMON_ARGS=""
+PIDFILE=/var/run/${NAME}.pid
+SCRIPTNAME=/etc/init.d/${NAME}d
+CONFIG_FILE=etc/${NAME}d.conf
+
+# Exit if the package is not installed
+[ -x "$DAEMON" ] || exit 0
+
+# Read configuration variable file if it is present
+#[ -r /etc/default/$NAME ] && . /etc/default/$NAME
+[ -r /etc/default/$NAME ] && . /etc/default/$NAME
+
+# Load the VERBOSE setting and other rcS variables
+. /lib/init/vars.sh
+
+# Define LSB log_* functions.
+# Depend on lsb-base (>= 3.2-14) to ensure that this file is present
+# and status_of_proc is working.
 . /lib/lsb/init-functions
-
-# Setup static variables
-configFile='/etc/weechatd.conf'
-daemonExec='/usr/bin/weechat'
-daemonArgs=''
-daemonName="$(basename "$daemonExec")"
-pidFile='/var/run/weechatd.pid'
-
-#
-# Checks if the environment is capable of running the script (such as
-# availability of programs etc).
-#
-# Return: 0 if the environmnt is properly setup for execution of init script, 1
-#         if not all conditions have been met.
-#
-function checkEnvironment() {
-    # Verify that the necessary binaries are available for execution.
-    local binaries=(weechat)
-
-    for bin in "${binaries[@]}"; do
-        if ! which "$bin" > /dev/null; then
-            log_failure_msg "Binary '$bin' is not available. Please install \
-package containing it."
-            exit 5
-        fi
-    done
-}
 
 #
 # Checks if the configuration files are available and properly setup.
-#
 # Return: 0 if weechatd if properly configured, 1 otherwise.
 #
-function checkConfig() {
-    # Make sure the configuration file has been created
-    if ! [[ -f $configFile ]]; then
-        log_failure_msg "Please populate the configuration file '$configFile' \
-before running."
-        exit 6
-    fi
+function check_config() {
+	# Make sure the configuration file has been created
+	if ! [[ -r ${CONFIG_FILE} ]]; then
+		log_failure_msg "Populate the configuration file '${CONFIG_FILE}' before running."
+		exit 6
+	fi
 
-    # Make sure the required options have been set
-    local reqOptions=(user group session)
-    for option in "${reqOptions[@]}"; do
-        if ! grep -q -e "^[[:blank:]]*$option=" "$configFile"; then
-            log_failure_msg "Mandatory option '$option' was not specified in \
-'$configFile'"
-            exit 6
-        fi
-    done
+	# Make sure the required options have been set
+	local req_options=(user group)
+	for option in "${req_options[@]}"; do
+		if ! grep -q -e "^[[:blank:]]*${option}=" "${CONFIG_FILE}"; then
+			log_failure_msg "Mandatory option '${option}' was not specified in '${CONFIG_FILE}'"
+			exit 6
+		fi
+	done
 }
 
 #
 # Loads the configuration file and performs any additional configuration steps.
 #
 function configure() {
-    . "$configFile"
-    daemonArgs="$daemonArgs -S $session weechat"
-    [[ -n $args ]] && daemonArgs="$daemonArgs $args"
-    daemonCommand="$daemonExec $daemonArgs"
+	. "${CONFIG_FILE}"
+	[[ -n $args ]] && DAEMON_ARGS="${DAEMON_ARGS} $args"
 }
 
 #
-# Starts the daemon.
+# Function that starts the daemon/service
 #
-# Return: LSB-compliant code.
-#
-function start() {
-    start-stop-daemon --start --quiet --oknodo --pidfile "$pidFile" \
-        --make-pidfile --chuid "$user:$group" --background \
-        --exec "$daemonExec" -- $daemonArgs
+do_start()
+{
+	# Return
+	#   0 if daemon has been started
+	#   1 if daemon was already running
+	#   2 if daemon could not be started
+	start-stop-daemon --start --quiet --pidfile $PIDFILE --make-pidfile --chuid "$user:$group" --exec $DAEMON --test > /dev/null \
+		|| return 1
+	start-stop-daemon --start --quiet --pidfile $PIDFILE --make-pidfile --chuid "$user:$group" --exec $DAEMON -- \
+		$DAEMON_ARGS \
+		|| return 2
+	# Add code here, if necessary, that waits for the process to be ready
+	# to handle requests from services started subsequently which depend
+	# on this one.  As a last resort, sleep for some time.
 }
 
 #
-# Stops the daemon.
+# Function that stops the daemon/service
 #
-# Return: LSB-compliant code.
-#
-function stop() {
-    start-stop-daemon --stop --quiet --oknodo --retry 30 --pidfile "$pidFile" \
-        --chuid "$user:$group" --exec "$daemonExec" -- $daemonArgs
+do_stop()
+{
+	# Return
+	#   0 if daemon has been stopped
+	#   1 if daemon was already stopped
+	#   2 if daemon could not be stopped
+	#   other if a failure occurred
+	start-stop-daemon --stop --quiet --retry=TERM/30/KILL/5 --pidfile $PIDFILE --name $NAME
+	RETVAL="$?"
+	[ "$RETVAL" = 2 ] && return 2
+	# Wait for children to finish too if this is a daemon that forks
+	# and if the daemon is only ever run from this initscript.
+	# If the above conditions are not satisfied then add some other code
+	# that waits for the process to drop all resources that could be
+	# needed by services started subsequently.  A last resort is to
+	# sleep for some time.
+	start-stop-daemon --stop --quiet --oknodo --retry=0/30/KILL/5 --exec $DAEMON
+	[ "$?" = 2 ] && return 2
+	# Many daemons don't delete their pidfiles when they exit.
+	rm -f $PIDFILE
+	return "$RETVAL"
 }
 
-checkEnvironment
-checkConfig
+#
+# Function that sends a SIGHUP to the daemon/service
+#
+do_reload() {
+	#
+	# If the daemon can reload its configuration without
+	# restarting (for example, when it is sent a SIGHUP),
+	# then implement that here.
+	#
+	start-stop-daemon --stop --signal 1 --quiet --pidfile $PIDFILE --name $NAME
+	return 0
+}
+
+check_config
 configure
 
 case "$1" in
-    start)
-        log_daemon_msg "Starting daemon" "weechatd"
-        start && log_end_msg 0 || log_end_msg $?
-        ;;
-    stop)
-        log_daemon_msg "Stopping daemon" "weechatd"
-        stop && log_end_msg 0 || log_end_msg $?
-        ;;
-    restart)
-        log_daemon_msg "Restarting daemon" "weechatd"
-        stop
-        start && log_end_msg 0 || log_end_msg $?
-        ;;
-    force-reload)
-        log_daemon_msg "Restarting daemon" "weechatd"
-        stop
-        start && log_end_msg 0 || log_end_msg $?
-        ;;
-    status)
-        status_of_proc -p "$pidFile" "$daemonExec" "$daemonName" && exit 0 || exit $?
-        ;;
-    *)
-        echo "weechatd (start|stop|restart|force-reload|status|help)"
-        ;;
+  start)
+	[ "$VERBOSE" != no ] && log_daemon_msg "Starting $DESC" "$NAME"
+	do_start
+	case "$?" in
+		0|1) [ "$VERBOSE" != no ] && log_end_msg 0 ;;
+		2) [ "$VERBOSE" != no ] && log_end_msg 1 ;;
+	esac
+	;;
+  stop)
+	[ "$VERBOSE" != no ] && log_daemon_msg "Stopping $DESC" "$NAME"
+	do_stop
+	case "$?" in
+		0|1) [ "$VERBOSE" != no ] && log_end_msg 0 ;;
+		2) [ "$VERBOSE" != no ] && log_end_msg 1 ;;
+	esac
+	;;
+  status)
+	status_of_proc "$DAEMON" "$NAME" && exit 0 || exit $?
+	;;
+  #reload|force-reload)
+	#
+	# If do_reload() is not implemented then leave this commented out
+	# and leave 'force-reload' as an alias for 'restart'.
+	#
+	#log_daemon_msg "Reloading $DESC" "$NAME"
+	#do_reload
+	#log_end_msg $?
+	#;;
+  restart|force-reload)
+	#
+	# If the "reload" option is implemented then remove the
+	# 'force-reload' alias
+	#
+	log_daemon_msg "Restarting $DESC" "$NAME"
+	do_stop
+	case "$?" in
+	  0|1)
+		do_start
+		case "$?" in
+			0) log_end_msg 0 ;;
+			1) log_end_msg 1 ;; # Old process is still running
+			*) log_end_msg 1 ;; # Failed to start
+		esac
+		;;
+	  *)
+		# Failed to stop
+		log_end_msg 1
+		;;
+	esac
+	;;
+  *)
+	#echo "Usage: $SCRIPTNAME {start|stop|restart|reload|force-reload}" >&2
+	echo "Usage: $SCRIPTNAME {start|stop|status|restart|force-reload}" >&2
+	exit 3
+	;;
 esac
+
+:
