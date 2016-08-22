@@ -13,7 +13,7 @@
 . /lib/lsb/init-functions
 
 # Setup static variables
-configFile='/etc/weechat.conf'
+configFile='/etc/weechatd.conf'
 daemonExec='/usr/bin/weechat'
 daemonArgs=''
 daemonName="$(basename "$daemonExec")"
