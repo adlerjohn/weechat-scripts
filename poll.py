@@ -16,7 +16,7 @@
 
 SCRIPT_NAME = 'poll'
 SCRIPT_AUTHOR = 'John Adler'
-SCRIPT_VERSION = '0.1.1'
+SCRIPT_VERSION = '0.1.2'
 SCRIPT_LICENSE = 'GPL3'
 SCRIPT_DESC = 'Polls messages and automatically downloads new files that match criteria.'
 SCRIPT_SHUTDOWN = ''
