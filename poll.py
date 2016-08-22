@@ -24,7 +24,8 @@ SCRIPT_CHARSET = 'UTF-8'
 
 SCRIPT_OPTIONS = {
 	'files' : '',
-	'hosts' : ''
+	'hosts' : '',
+	'nicks' : '',
 	}
 
 #---------------
@@ -67,12 +68,16 @@ def message_cb(
 ):
 	files = weechat.config_get_plugin('files').split(',')
 	hosts = weechat.config_get_plugin('hosts').split(',')
+	nicks = weechat.config_get_plugin('nicks').split(',')
 
 	tags = list(tags.split(','))
 
 	# Ignore join/leave message
 	if 'irc_smart' in tags or 'irc_smart_filter' in tags:
 		return weechat.WEECHAT_RC_OK
+
+	weechat.prnt(weechat.current_buffer(), "tags = " + str(tags))
+	weechat.prnt(weechat.current_buffer(), "mess = " + str(message))
 
 	# Check if the 'host_' substring is in the tags
 	host_str = [s for s in tags if 'host_' in s]
@@ -86,8 +91,20 @@ def message_cb(
 		return weechat.WEECHAT_RC_OK
 	host = host[1]
 
-	# Check if the current host matches our list of hosts
-	if host not in hosts:
+	# Check if the 'nick_' substring is in the tags
+	nick_str = [s for s in tags if 'nick_' in s]
+	if len(nick_str) != 1:
+		return weechat.WEECHAT_RC_OK
+	nick_str = nick_str[0]
+
+	# Extract the nick
+	nick = nick_str.split("_", 1)
+	if len(nick) != 2:
+		return weechat.WEECHAT_RC_OK
+	nick = nick[1]
+
+	# Check if the current host or nick matches our list of accpeted hosts or nicks
+	if host not in hosts and nick not in nicks:
 		return weechat.WEECHAT_RC_OK
 
 	# Compare the message against list of files
@@ -100,7 +117,7 @@ def message_cb(
 		return weechat.WEECHAT_RC_OK
 
 	# If a match, extract download prompt from message
-	match = re.match(r'^.*([/][mM][sS][gG].*)$', message)
+	match = re.match(r'^.*([/]msg.*)$', message, re.IGNORECASE)
 	if not match:
 		return weechat.WEECHAT_RC_OK
 	msg = match.group(1)
