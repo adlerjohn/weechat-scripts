@@ -16,7 +16,7 @@
 
 # PATH should only include /usr/* if it runs after the mountnfs.sh script
 #PATH=/sbin:/usr/sbin:/bin:/usr/bin
-DESC="Description of the service"
+DESC="Runs weechat daemon"
 NAME=weechat
 DAEMON=/usr/bin/${NAME}
 DAEMON_ARGS=""
@@ -28,7 +28,6 @@ CONFIG_FILE=etc/${NAME}d.conf
 [ -x "$DAEMON" ] || exit 0
 
 # Read configuration variable file if it is present
-#[ -r /etc/default/$NAME ] && . /etc/default/$NAME
 [ -r /etc/default/$NAME ] && . /etc/default/$NAME
 
 # Load the VERBOSE setting and other rcS variables
@@ -65,7 +64,7 @@ function check_config() {
 #
 function configure() {
 	. "${CONFIG_FILE}"
-	[[ -n $args ]] && DAEMON_ARGS="${DAEMON_ARGS} $args"
+	[[ -n ${args} ]] && DAEMON_ARGS="${DAEMON_ARGS} ${args}"
 }
 
 #
