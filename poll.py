@@ -115,7 +115,7 @@ def message_cb(
 	msg = match.group(1)
 
 	# Download file
-	weechat.command(weechat.current_buffer(), msg)
+	weechat.command(buf, msg)
 
 	return weechat.WEECHAT_RC_OK
 
