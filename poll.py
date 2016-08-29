@@ -47,7 +47,11 @@ except ImportError as error:
 # Utility
 #---------------
 def words_in_string(words, s):
-	return set(words.split()).intersection(s.split())
+	l = s.lower()
+	for word in words.lower().split():
+		if word not in l:
+			return False
+	return True
 
 def parse_tags(tags, tag):
 	pattern = re.compile(r'^' + tag + '_(.*)$', re.IGNORECASE)
