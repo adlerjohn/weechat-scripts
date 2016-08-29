@@ -103,6 +103,8 @@ def message_cb(
 	if host not in hosts and nick not in nicks:
 		return weechat.WEECHAT_RC_OK
 
+	weechat.log_print(' caught message: ' + str(message));
+
 	# Compare the message against list of files
 	do_download = False
 	for f in files:
@@ -127,10 +129,19 @@ def message_cb(
 # Main
 #---------------
 def main():
+	weechat.log_print(' Running ' + str(SCRIPT_NAME) + ' version ' + str(SCRIPT_VERSION));
+
 	# Read options
 	for option, default_value in SCRIPT_OPTIONS.items():
 		if not weechat.config_is_set_plugin(option):
 			weechat.config_set_plugin(option, default_value)
+
+	files = weechat.config_get_plugin('files').split(',')
+	hosts = weechat.config_get_plugin('hosts').split(',')
+	nicks = weechat.config_get_plugin('nicks').split(',')
+	weechat.log_print(' files = ' + str(files));
+	weechat.log_print(' hosts = ' + str(hosts));
+	weechat.log_print(' nicks = ' + str(nicks));
 
 	# Callback to update options
 	weechat.hook_config('plugins.var.python.' + SCRIPT_NAME + '.*', 'config_cb', '')
