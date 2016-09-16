@@ -1,0 +1,13 @@
+[Unit]
+Description=Weechat Screen session
+Requires=network-online.target
+
+[Service]
+Type=forking
+User=%I
+ExecStart=/usr/bin/screen -d -m -S weechat /usr/bin/weechat
+ExecStop=/usr/bin/screen -S weechat -X quit
+
+[Install]
+WantedBy=multi-user.target
+
