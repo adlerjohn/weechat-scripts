@@ -99,7 +99,7 @@ def message_cb(
     if not nick:
         return weechat.WEECHAT_RC_OK
 
-    # Check if the current host or nick matches our list of accpeted hosts or nicks
+    # Check if the current host or nick matches our list of accepted hosts or nicks
     if host not in hosts and nick not in nicks:
         return weechat.WEECHAT_RC_OK
 
